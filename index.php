@@ -115,6 +115,17 @@ foreach($parameter as $p){
     if($p->id == "ws"){
         $data->wind_speed = $p->timerange[0]->value[2];
     }
+
+    //tmax
+    if($p->id == "tmax"){
+        $data->forecast = array();
+        foreach($p->timerange as $fr){
+            $frc = new stdClass();
+            $frc->day = $fr->day;
+            $frc->forecast = $fr->value[0];
+            $data->forecast[] = $frc;
+        }
+    }
 }
 
 header("Content-Type:application/json");

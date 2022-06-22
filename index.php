@@ -122,7 +122,7 @@ foreach($parameter as $p){
         foreach($p->timerange as $fr){
             $frc = new stdClass();
             $frc->day = $fr->day;
-            $frc->forecast = $fr->value[0];
+            $frc->temp = $fr->value[0];
             $data->forecast[] = $frc;
         }
     }

@@ -162,7 +162,7 @@ if($weather_forecast != null && $temperature_forecast != null){
         $frc = new stdClass();
         $frc->weather = getWeatherName($weather_forecast[$i]->value);
         $frc->weather_code = $weather_forecast[$i]->value;
-        $frc->day = substr($weather_forecast[$i]->datetime,0,8);
+        $frc->day = substr($weather_forecast[$i]->datetime,0,10);
         $frc->temp = $temperature_forecast[$i]->value[0];
         $data->forecast[] = $frc;
     }

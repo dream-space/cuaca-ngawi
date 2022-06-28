@@ -78,7 +78,29 @@ function cleanup_json ($ugly_json) {
     } else {
        return $ugly_json;
     }
- }
+}
+
+function get_now_data($data, $current_date, $current_hour) {
+    $current_hour = (int) $current_hour;
+    if($current_hour < 6){
+        $current_hour = "00";
+    } else if($current_hour >= 6 && $current_hour < 12){
+        $current_hour = "06";
+    } else if($current_hour >= 12 && $current_hour < 18){
+        $current_hour = "12";
+    } else if($current_hour >= 18){
+        $current_hour = "18";
+    }
+    $date_hour = $current_date . $current_hour . "00";
+    $result = new stdClass();
+    foreach($data as $r){
+        if(str_ends_with($r->datetime, $date_hour)){
+            $result = $r;
+            break;
+        }
+    }
+    return $result;
+}
 
 // From URL to get webpage contents.
 $url = "https://data.bmkg.go.id/DataMKG/MEWS/DigitalForecast/DigitalForecast-JawaTimur.xml";
@@ -86,48 +108,64 @@ $result = cleanup_json(json_decode(parse($url))->forecast->area);
 $ngawi = new stdClass();
 $data = new stdClass();
 $data->pressure = null;
+
+date_default_timezone_set('Asia/Jakarta');
+$current_hour = date('H');
+$current_date = date('d');
+
+$weather_forecast = null;
+$temperature_forecast = null;
+
 foreach($result as $r){
     if($r->description == "Ngawi"){
         $ngawi = $r;
         break;
     }
 }
+// $data->original = $ngawi;
 //
 $parameter = $ngawi->parameter;
 foreach($parameter as $p){
     // weather
     if($p->id == "weather"){
-        $data->weather = getWeatherName($p->timerange[0]->value);
-        $data->weather_code = $p->timerange[0]->value;
+        $weather_timerange = get_now_data($p->timerange, $current_date, $current_hour);
+        $data->weather_date = $weather_timerange->datetime;
+        $data->weather = getWeatherName($weather_timerange->value);
+        $data->weather_code = $weather_timerange->value;
+        $weather_forecast = array_slice($p->timerange, 4);
     }
 
     // temperature
     if($p->id == "t"){
-        $data->temperature = $p->timerange[0]->value[0];
+        $temperature_timerange = get_now_data($p->timerange, $current_date, $current_hour);
+        $data->temperature = $temperature_timerange->value[0];
+        $temperature_forecast = array_slice($p->timerange, 4);
     }
 
     //humidity
     if($p->id == "hu"){
-        $data->humidity = $p->timerange[0]->value;
+        $humidity_timerange = get_now_data($p->timerange, $current_date, $current_hour);
+        $data->humidity = $humidity_timerange->value;
     }
     
     //wind_speed
     if($p->id == "ws"){
-        $data->wind_speed = $p->timerange[0]->value[2];
-    }
-
-    //tmax
-    if($p->id == "tmax"){
-        $data->forecast = array();
-        foreach($p->timerange as $fr){
-            $frc = new stdClass();
-            $frc->day = $fr->day;
-            $frc->temp = $fr->value[0];
-            $data->forecast[] = $frc;
-        }
+        $wind_timerange = get_now_data($p->timerange, $current_date, $current_hour);
+        $data->wind_speed = $wind_timerange->value[2];
     }
 }
 
+//tmax
+if($weather_forecast != null && $temperature_forecast != null){
+    $data->forecast = array();
+    for($i = 0; $i < 8; $i++){
+        $frc = new stdClass();
+        $frc->weather = $weather_forecast[$i]->value;
+        $frc->day = substr($weather_forecast[$i]->datetime,0,8);
+        $frc->temp = $temperature_forecast[$i]->value[0];
+        $data->forecast[] = $frc;
+    }
+}
 header("Content-Type:application/json");
 echo json_encode($data);;
 
